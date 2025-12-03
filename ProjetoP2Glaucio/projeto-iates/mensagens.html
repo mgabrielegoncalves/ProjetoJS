@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Luxo - Mensagens</title>
+  <link rel="shortcut icon" href="images/barco2.png" type="image/x-icon" />
+  <link rel="stylesheet" href="css/default.css" />
+  <style>
+   
+    .messages-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+      background-color: white;
+    }
+
+    .messages-table th,
+    .messages-table td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid #ddd;
+    }
+
+    .messages-table th {
+      background-color: #f5f5f5;
+      font-weight: bold;
+      color: #333;
+    }
+
+    .messages-table tr:hover {
+      background-color: #f9f9f9;
+    }
+
+    button.action {
+      margin-right: 6px;
+      padding: 6px 8px;
+      border-radius: 6px;
+      cursor: pointer;
+      border: 0;
+      color: #fff;
+    }
+
+    button.visualizada { background:#1bb4e8; }
+    button.excluir { background:#c44545; }
+  </style>
+</head>
+
+<body>
+  <div class="page">
+    <header>
+      <div id="title">
+        <img src="images/barco1.png" alt="ícone de barco" />
+        <div class="headtitle">
+          <h1>Luxo</h1>
+          <h2>Aluguel de iates</h2>
+        </div>
+      </div>
+
+      <nav>
+        <ul class="navmenu">
+          <li><a href="index.html">Página inicial</a></li>
+          <li><a href="aluguel.html">Aluguel de iates</a></li>
+          <li><a href="destinos.html">Destinos</a></li>
+          <li><a href="tripulacao.html">Tripulação</a></li>
+          <li><a href="contato.html">Contato</a></li>
+          <li><a href="admin.html">Admin</a></li>
+          <li><a href="mensagens.html" class="accent">Mensagens</a></li>
+        </ul>
+      </nav>
+    </header>
+
+    <main>
+      <div class="pagtitle">
+        <div class="bgtitle"></div>
+        <h2>Mensagens Recebidas</h2>
+      </div>
+
+      <div id="mensagens-container">
+        <table class="messages-table">
+          <thead>
+            <tr>
+              <th>Nome</th>
+              <th>E-mail</th>
+              <th>Mensagem</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="mensagens-body">
+          </tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+
+  <footer>
+    <p>© 2023 por Luxo aluguel de iates</p>
+  </footer>
+
+  <script src="js/jquery-3.6.4.min.js"></script>
+  <script src="js/api.js"></script>
+  <script>
+    (function($){
+      const LS_KEY = "mensagens_local";
+
+      function loadLocal() {
+        return JSON.parse(localStorage.getItem(LS_KEY) || "[]");
+      }
+      function saveLocal(msgs) {
+        localStorage.setItem(LS_KEY, JSON.stringify(msgs));
+      }
+
+      function renderTable() {
+        const tbody = $("#mensagens-body");
+        tbody.empty();
+        const msgs = loadLocal();
+        if(!msgs.length) {
+          tbody.append('<tr><td colspan="4" style="text-align:center; color:#666">Nenhuma mensagem encontrada</td></tr>');
+          return;
+        }
+
+        msgs.forEach(m => {
+          const estilo = m.visualizada ? "font-weight: normal;" : "font-weight: bold;";
+          const tr = $(`
+            <tr data-id="${m.__localId}" style="${estilo}">
+              <td>${m.nome}</td>
+              <td>${m.email}</td>
+              <td>${m.mensagem}</td>
+              <td>
+                <button class="action visualizada">Marcar Visualizada</button>
+                <button class="action excluir">Excluir</button>
+              </td>
+            </tr>
+          `);
+          tbody.append(tr);
+        });
+      }
+
+      function atualizarMensagens() {
+        let remote = obterMensagens() || [];
+        let local = loadLocal();
+
+        remote = remote.map((m,i)=>{
+          const id = m.id || m._id || (m.email + "|" + m.nome + "|" + i);
+          return {...m, __localId: id, visualizada: false};
+        });
+
+        const mapLocal = {};
+        local.forEach(l => { mapLocal[l.__localId] = l; });
+
+        const merged = remote.map(m=>{
+          if(mapLocal[m.__localId]) return {...m, visualizada: mapLocal[m.__localId].visualizada};
+          return m;
+        });
+
+        saveLocal(merged);
+        renderTable();
+      }
+
+      function bindActions() {
+        $("#mensagens-body").off("click", "button.action");
+        $("#mensagens-body").on("click", "button.action", function(){
+          const tr = $(this).closest("tr");
+          const id = tr.data("id");
+          let msgs = loadLocal();
+
+          if($(this).hasClass("visualizada")) {
+            if(confirm("Marcar como visualizada?")) {
+              const idx = msgs.findIndex(m=>m.__localId===id);
+              msgs[idx].visualizada = true;
+            }
+          } else if($(this).hasClass("excluir")) {
+            if(confirm("Deseja realmente excluir?")) {
+              msgs = msgs.filter(m=>m.__localId!==id);
+            }
+          }
+
+          saveLocal(msgs);
+          renderTable();
+        });
+      }
+
+      $(function(){
+        atualizarMensagens();
+        bindActions();
+      });
+
+    })(jQuery);
+  </script>
+</body>
+</html>
